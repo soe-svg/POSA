@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POSA – Leder-panel</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f4f8; margin: 0; padding: 2rem; color: #2c3e50; }
+        .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        h1 { margin: 0; }
+        .btn { display: inline-block; padding: 0.6rem 1.4rem; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.95rem; cursor: pointer; border: none; }
+        .btn-secondary { background-color: #7f8c8d; color: white; }
+        .btn-secondary:hover { background-color: #6c7a89; }
+        .btn-primary { background-color: #2c3e50; color: white; }
+        .btn-primary:hover { background-color: #3d5166; }
+        .btn-danger { background-color: #e74c3c; color: white; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .btn-danger:hover { background-color: #c0392b; }
+        
+        /* Ny styling til QR-knappen i toppen */
+        .btn-qr { background-color: #2980b9; color: white; margin-left: 0.5rem; }
+        .btn-qr:hover { background-color: #2471a3; }
+
+        .flash { padding: 0.85rem 1.2rem; border-radius: 8px; margin-bottom: 1.25rem; font-weight: bold; }
+        .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+        .card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+        h2 { margin-top: 0; border-bottom: 2px solid #f0f4f8; padding-bottom: 0.5rem; font-size: 1.4rem; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #eef2f7; font-size: 0.9rem; vertical-align: middle; }
+        th { background-color: #f8fafc; color: #7f8c8d; font-weight: bold; }
+        
+        select, input[type="text"] { padding: 0.4rem; border-radius: 6px; border: 1px solid #ccd1d9; font-size: 0.9rem; color: #2c3e50; }
+        .form-inline { display: flex; gap: 0.5rem; align-items: center; }
+        
+        .janitor-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; max-width: 400px; }
+        .janitor-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: #f8fafc; border-radius: 6px; border: 1px solid #eef2f7; }
+        .actions-cell { display: flex; gap: 0.5rem; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div>
+            <h1>Leder-panel</h1>
+            <p style="color: #7f8c8d; margin: 0.25rem 0 0 0;">Styr opgaver og administrer pedelmedhjælpere</p>
+        </div>
+        <div>
+            <a href="/generate_qr" class="btn btn-qr">📱 QR Værktøj & Lokationer</a>
+            <a href="/" class="btn btn-secondary">← Tilbage til oversigten</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash flash-success">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <h2>Opgavestyring</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Titel</th>
+                    <th>Placering</th>
+                    <th>Oprettet af</th>
+                    <th>Status</th>
+                    <th>Tildelt til</th>
+                    <th>Handling</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if tasks %}
+                    {% for task in tasks %}
+                        <tr>
+                            <form method="POST" action="/admin/update_task/{{ task['id'] }}">
+                                <td><strong>{{ task['title'] }}</strong></td>
+                                <td>{{ task['location'] or '—' }}</td>
+                                <td>{{ task['reporter_name'] or 'Anonym' }}</td>
+                                <td>
+                                    <select name="status">
+                                        <option value="Ny" {% if task['status'] == 'Ny' %}selected{% endif %}>Ny</option>
+                                        <option value="I gang" {% if task['status'] == 'I gang' %}selected{% endif %}>I gang</option>
+                                        <option value="Færdig" {% if task['status'] == 'Færdig' %}selected{% endif %}>Færdig</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="assigned_janitor">
+                                        <option value="">-- Ikke tildelt --</option>
+                                        {% for janitor in janitors %}
+                                            <option value="{{ janitor['name'] }}" {% if task['assigned_janitor'] == janitor['name'] %}selected{% endif %}>
+                                                {{ janitor['name'] }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="actions-cell">
+                                    <button type="submit" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Gem</button>
+                            </form>
+                                    <form method="POST" action="/admin/delete_task/{{ task['id'] }}" style="margin:0;">
+                                        <button type="submit" class="btn btn-danger" onclick="return confirm('Er du helt sikker på du vil slette denne opgave permanent?')">Slet</button>
+                                    </form>
+                                </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #7f8c8d; font-style: italic;">Ingen opgaver oprettet endnu.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Administrer pedelmedhjælpere / roller</h2>
+        <p style="color: #7f8c8d; font-size: 0.9rem; margin-top: 0;">Opret navnene på de medhjælpere eller teams, der skal kunne tildeles opgaver i systemet.</p>
+        
+        <form method="POST" action="/admin/add_janitor" class="form-inline" style="margin-bottom: 1.5rem;">
+            <input type="text" name="janitor_name" placeholder="F.eks. Pedel-team A eller Anders Andersen" required style="width: 300px;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.9rem;">+ Opret rolle</button>
+        </form>
+
+        <h3>Nuværende oprettede roller:</h3>
+        <div class="janitor-list">
+            {% if janitors %}
+                {% for janitor in janitors %}
+                    <div class="janitor-item">
+                        <span>🛠️ <strong>{{ janitor['name'] }}</strong></span>
+                        <form method="POST" action="/admin/delete_janitor/{{ janitor['id'] }}" style="margin:0;">
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Er du sikker på, at du vil slette denne pedelrolle?')">Slet</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: #7f8c8d; font-style: italic; font-size: 0.9rem;">Ingen pedelmedhjælpere oprettet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+</body>
+</html>

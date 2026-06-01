@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POSA – Print alle QR koder</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: white;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        
+        .no-print-top {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem;
+            font-weight: bold;
+            margin-bottom: 2cm;
+        }
+        .btn {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-left: 1rem;
+        }
+        .btn-back { background-color: #7f8c8d; }
+
+        /* Selve plakat-beholderen */
+        .qr-poster {
+            /* Tvinger browseren til at lave et nyt stykke papir efter hver lokation ved print */
+            page-break-after: always;
+            box-sizing: border-box;
+            padding-top: 5cm; /* Centrerer koden vertikalt på et A4 */
+        }
+        
+        .qr-poster:last-child {
+            page-break-after: avoid; /* Undgå en tom hvid side til sidst */
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: black;
+        }
+        p {
+            font-size: 1.5rem;
+            color: #555;
+            margin-top: 0;
+        }
+        .qr-image {
+            max-width: 350px;
+            width: 100%;
+            height: auto;
+            margin: 1.5rem 0;
+        }
+        .location-tag {
+            font-size: 2rem;
+            font-weight: bold;
+            border: 3px solid black;
+            display: inline-block;
+            padding: 0.5rem 2rem;
+            margin-top: 1.5rem;
+            text-transform: uppercase;
+        }
+
+        /* Skjul topbaren fuldstændigt når der printes */
+        @media print {
+            .no-print-top {
+                display: none !important;
+            }
+            .qr-poster {
+                padding-top: 4cm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print-top">
+        🖨️ Forhåndsvisning: Klar til at printe {{ qr_list|length }} plakater.
+        <button onclick="window.print();" class="btn">Start Printarbejde</button>
+        <a href="/generate_qr" class="btn btn-back">← Gå tilbage</a>
+    </div>
+
+    {% for item in qr_list %}
+        <div class="qr-poster">
+            <h2>MELD FEJL ELLER MANGLER</h2>
+            <p>Scan QR-koden med din telefon for at sende en opgave til pedellen</p>
+            
+            <img src="data:image/png;base64,{{ item['qr_base64'] }}" alt="QR Kode for {{ item['name'] }}" class="qr-image">
+            
+            <div>
+                <div class="location-tag">{{ item['name'] }}</div>
+            </div>
+        </div>
+    {% endfor %}
+
+    <script>
+        window.onload = function() {
+            // En lille delay sikrer, at billederne er helt klar i browseren inden boksen popper op
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        };
+    </script>
+
+</body>
+</html>
