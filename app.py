@@ -127,9 +127,10 @@ def create_task():
 @app.route("/admin")
 def admin_panel():
     with get_db() as conn:
-        tasks = conn.execute("SELECT * FROM tasks ORDER BY created_at DESC").fetchall()
+        active_tasks = conn.execute("SELECT * FROM tasks WHERE status != 'Færdig' ORDER BY created_at DESC").fetchall()
+        completed_tasks = conn.execute("SELECT * FROM tasks WHERE status = 'Færdig' ORDER BY completed_at DESC").fetchall()
         janitors = conn.execute("SELECT * FROM janitors ORDER BY name ASC").fetchall()
-    return render_template("admin.html", tasks=tasks, janitors=janitors, version=APP_VERSION)
+    return render_template("admin.html", active_tasks=active_tasks, completed_tasks=completed_tasks, janitors=janitors, version=APP_VERSION)
 
 @app.route("/admin/print_daily_tasks")
 def print_daily_tasks():

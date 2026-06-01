@@ -63,7 +63,7 @@
     {% endwith %}
 
     <div class="card">
-        <h2>Opgavestyring</h2>
+        <h2>Aktive opgaver</h2>
         <table>
             <thead>
                 <tr>
@@ -77,8 +77,8 @@
                 </tr>
             </thead>
             <tbody>
-                {% if tasks %}
-                    {% for task in tasks %}
+                {% if active_tasks %}
+                    {% for task in active_tasks %}
                         <tr>
                             <td><strong>{{ task['title'] }}</strong></td>
                             <td>{{ task['location'] or '—' }}</td>
@@ -118,11 +118,76 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #7f8c8d; font-style: italic;">Ingen opgaver oprettet endnu.</td>
+                        <td colspan="7" style="text-align: center; color: #7f8c8d; font-style: italic;">Ingen aktive opgaver lige nu.</td>
                     </tr>
                 {% endif %}
             </tbody>
         </table>
+
+        <hr style="margin: 2rem 0; border-color: #e1e8ee;">
+
+        <details open style="background: #f9fbfd; border: 1px solid #dfe7ee; border-radius: 10px; padding: 1rem;">
+            <summary style="font-size: 1rem; font-weight: 700; cursor: pointer; margin-bottom: 1rem;">📁 Vis afsluttede/arkiverede opgaver</summary>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Titel</th>
+                        <th>Placering</th>
+                        <th>Oprettet af</th>
+                        <th>Status</th>
+                        <th>Tildelt til</th>
+                        <th>Interne Noter / Kommentarer</th>
+                        <th>Handling</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if completed_tasks %}
+                        {% for task in completed_tasks %}
+                            <tr>
+                                <td><strong>{{ task['title'] }}</strong></td>
+                                <td>{{ task['location'] or '—' }}</td>
+                                <td>{{ task['reporter_name'] or 'Anonym' }}</td>
+                                <td>
+                                    <select name="status" form="form-update-{{ task['id'] }}">
+                                        <option value="Ny" {% if task['status'] == 'Ny' %}selected{% endif %}>Ny</option>
+                                        <option value="I gang" {% if task['status'] == 'I gang' %}selected{% endif %}>I gang</option>
+                                        <option value="Færdig" {% if task['status'] == 'Færdig' %}selected{% endif %}>Færdig</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="assigned_janitor" form="form-update-{{ task['id'] }}">
+                                        <option value="">-- Ikke tildelt --</option>
+                                        {% for janitor in janitors %}
+                                            <option value="{{ janitor['name'] }}" {% if task['assigned_janitor'] == janitor['name'] %}selected{% endif %}>
+                                                {{ janitor['name'] }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <form method="POST" action="/admin/update_notes/{{ task['id'] }}" style="display:flex; gap:0.25rem; align-items:center; margin:0;">
+                                        <input type="text" name="internal_notes" value="{{ task['internal_notes'] or '' }}" placeholder="F.eks. Venter på mureren..." style="width:100%; padding:0.35rem 0.45rem; border:1px solid #ccd1d9; border-radius:6px; font-size:0.9rem;">
+                                        <button type="submit" class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; margin:0;">Gem note</button>
+                                    </form>
+                                </td>
+                                <td class="actions-cell">
+                                    <form id="form-update-{{ task['id'] }}" method="POST" action="/admin/update_task/{{ task['id'] }}" style="margin:0; display:inline-flex; gap:0.5rem; align-items:center;">
+                                        <button type="submit" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin:0;">Gem</button>
+                                    </form>
+                                    <form method="POST" action="/admin/delete_task/{{ task['id'] }}" style="margin:0; display:inline-block;">
+                                        <button type="submit" class="btn btn-danger" style="margin:0;" onclick="return confirm('Er du helt sikker på du vil slette denne opgave permanent?')">Slet</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #7f8c8d; font-style: italic;">Ingen afsluttede eller arkiverede opgaver.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </details>
     </div>
 
     <div class="card">
