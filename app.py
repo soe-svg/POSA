@@ -6,6 +6,7 @@ import urllib.parse
 from flask import Flask, render_template, request, redirect, flash
 
 app = Flask(__name__)
+APP_VERSION = "1.2.0"
 app.secret_key = "posa_hemmelig_noegle"
 
 DATABASE = "posa.db"
@@ -86,7 +87,8 @@ def index():
         active_tasks=active_tasks, 
         finished_tasks=finished_tasks, 
         view=view,
-        janitors=janitors_list
+        janitors=janitors_list,
+        version=APP_VERSION
     )
 
 @app.route("/create", methods=["GET", "POST"])
@@ -127,7 +129,7 @@ def admin_panel():
     with get_db() as conn:
         tasks = conn.execute("SELECT * FROM tasks ORDER BY created_at DESC").fetchall()
         janitors = conn.execute("SELECT * FROM janitors ORDER BY name ASC").fetchall()
-    return render_template("admin.html", tasks=tasks, janitors=janitors)
+    return render_template("admin.html", tasks=tasks, janitors=janitors, version=APP_VERSION)
 
 @app.route("/admin/print_daily_tasks")
 def print_daily_tasks():
