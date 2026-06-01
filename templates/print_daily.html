@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POSA – Dagens opgaver</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            color: #222;
+            background: white;
+            margin: 0;
+            padding: 1.5rem;
+        }
+        h1, h2, h3 {
+            margin: 0;
+            color: #111;
+        }
+        h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+        h2 { font-size: 1.2rem; margin-top: 2rem; margin-bottom: 0.5rem; }
+        .summary-note {
+            margin-bottom: 1.5rem;
+            color: #444;
+            font-size: 0.95rem;
+        }
+        .janitor-block {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            page-break-inside: avoid;
+        }
+        .janitor-section {
+            page-break-after: always;
+            break-after: page;
+        }
+        .janitor-section:last-child {
+            page-break-after: avoid;
+            break-after: auto;
+        }
+        .janitor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.75rem;
+        }
+        .janitor-header h2 {
+            margin-bottom: 0;
+        }
+        .task-list {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .task-list th,
+        .task-list td {
+            padding: 0.65rem 0.75rem;
+            border-bottom: 1px solid #e3e3e3;
+            font-size: 0.92rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        .task-list th {
+            background: #f4f4f4;
+            color: #333;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        .task-list td {
+            color: #333;
+        }
+        .status-pill {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            color: white;
+            background: #2980b9;
+            text-transform: capitalize;
+        }
+        .no-tasks {
+            color: #666;
+            font-style: italic;
+            margin: 0.5rem 0;
+        }
+        @media print {
+            body {
+                padding: 1cm;
+            }
+            .janitor-block {
+                border: none;
+                page-break-inside: avoid;
+            }
+            .janitor-section {
+                page-break-after: always;
+                break-after: page;
+            }
+            .janitor-section:last-child {
+                page-break-after: avoid;
+                break-after: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    {% for janitor in janitors %}
+        <div class="janitor-block janitor-section">
+            <h1 style="text-align: center; text-transform: uppercase; margin-bottom: 1rem;">Dagens opgaver</h1>
+            <div class="janitor-header">
+                <h2>{{ janitor }}</h2>
+                <span>{{ grouped_tasks[janitor]|length }} tildelte opgave{{ 'r' if grouped_tasks[janitor]|length != 1 else '' }}</span>
+            </div>
+            {% if grouped_tasks[janitor] %}
+                <table class="task-list">
+                    <thead>
+                        <tr>
+                            <th>Titel</th>
+                            <th>Lokation</th>
+                            <th>Rapporteret af</th>
+                            <th>Oprettet</th>
+                            <th>Status</th>
+                            <th style="text-align: left;">Beskrivelse</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in grouped_tasks[janitor] %}
+                            <tr>
+                                <td>{{ task['title'] }}</td>
+                                <td>{{ task['location'] or '—' }}</td>
+                                <td>{{ task['reporter_name'] or 'Anonym' }}</td>
+                                <td>{{ task['created_at'] or 'Ukjendt' }}</td>
+                                <td><span class="status-pill">{{ task['status'] }}</span></td>
+                                <td style="text-align: left; font-style: italic; color: #555; max-width: 250px; white-space: normal; overflow: hidden; text-overflow: ellipsis;">
+                                    {{ task['description'] or '—' }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="no-tasks">Ingen tildelte opgaver i dag.</p>
+            {% endif %}
+        </div>
+    {% endfor %}
+
+    <script>
+        window.onload = function() {
+            window.print();
+        };
+    </script>
+</body>
+</html>

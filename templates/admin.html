@@ -35,18 +35,21 @@
         
         .janitor-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; max-width: 400px; }
         .janitor-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: #f8fafc; border-radius: 6px; border: 1px solid #eef2f7; }
-        .actions-cell { display: flex; gap: 0.5rem; align-items: center; }
+        .actions-cell { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-start; }
+        .actions-cell form { margin: 0; }
+        .actions-cell button { margin: 0; }
     </style>
 </head>
 <body>
 
     <div class="header-container">
         <div>
-            <h1>Leder-panel</h1>
+            <h1>Serviceleder panel</h1>
             <p style="color: #7f8c8d; margin: 0.25rem 0 0 0;">Styr opgaver og administrer pedelmedhjælpere</p>
         </div>
         <div>
             <a href="/generate_qr" class="btn btn-qr">📱 QR Værktøj & Lokationer</a>
+            <a href="/admin/print_daily_tasks" target="_blank" class="btn" style="background-color: #27ae60; color: white; margin-left: 0.5rem;">🖨️ Print Dagens Opgaver</a>
             <a href="/" class="btn btn-secondary">← Tilbage til oversigten</a>
         </div>
     </div>
@@ -69,6 +72,7 @@
                     <th>Oprettet af</th>
                     <th>Status</th>
                     <th>Tildelt til</th>
+                    <th>Interne Noter / Kommentarer</th>
                     <th>Handling</th>
                 </tr>
             </thead>
@@ -76,34 +80,40 @@
                 {% if tasks %}
                     {% for task in tasks %}
                         <tr>
-                            <form method="POST" action="/admin/update_task/{{ task['id'] }}">
-                                <td><strong>{{ task['title'] }}</strong></td>
-                                <td>{{ task['location'] or '—' }}</td>
-                                <td>{{ task['reporter_name'] or 'Anonym' }}</td>
-                                <td>
-                                    <select name="status">
-                                        <option value="Ny" {% if task['status'] == 'Ny' %}selected{% endif %}>Ny</option>
-                                        <option value="I gang" {% if task['status'] == 'I gang' %}selected{% endif %}>I gang</option>
-                                        <option value="Færdig" {% if task['status'] == 'Færdig' %}selected{% endif %}>Færdig</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <select name="assigned_janitor">
-                                        <option value="">-- Ikke tildelt --</option>
-                                        {% for janitor in janitors %}
-                                            <option value="{{ janitor['name'] }}" {% if task['assigned_janitor'] == janitor['name'] %}selected{% endif %}>
-                                                {{ janitor['name'] }}
-                                            </option>
-                                        {% endfor %}
-                                    </select>
-                                </td>
-                                <td class="actions-cell">
-                                    <button type="submit" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Gem</button>
-                            </form>
-                                    <form method="POST" action="/admin/delete_task/{{ task['id'] }}" style="margin:0;">
-                                        <button type="submit" class="btn btn-danger" onclick="return confirm('Er du helt sikker på du vil slette denne opgave permanent?')">Slet</button>
-                                    </form>
-                                </td>
+                            <td><strong>{{ task['title'] }}</strong></td>
+                            <td>{{ task['location'] or '—' }}</td>
+                            <td>{{ task['reporter_name'] or 'Anonym' }}</td>
+                            <td>
+                                <select name="status" form="form-update-{{ task['id'] }}">
+                                    <option value="Ny" {% if task['status'] == 'Ny' %}selected{% endif %}>Ny</option>
+                                    <option value="I gang" {% if task['status'] == 'I gang' %}selected{% endif %}>I gang</option>
+                                    <option value="Færdig" {% if task['status'] == 'Færdig' %}selected{% endif %}>Færdig</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="assigned_janitor" form="form-update-{{ task['id'] }}">
+                                    <option value="">-- Ikke tildelt --</option>
+                                    {% for janitor in janitors %}
+                                        <option value="{{ janitor['name'] }}" {% if task['assigned_janitor'] == janitor['name'] %}selected{% endif %}>
+                                            {{ janitor['name'] }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <form method="POST" action="/admin/update_notes/{{ task['id'] }}" style="display:flex; gap:0.25rem; align-items:center; margin:0;">
+                                    <input type="text" name="internal_notes" value="{{ task['internal_notes'] or '' }}" placeholder="F.eks. Venter på mureren..." style="width:100%; padding:0.35rem 0.45rem; border:1px solid #ccd1d9; border-radius:6px; font-size:0.9rem;">
+                                    <button type="submit" class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; margin:0;">Gem note</button>
+                                </form>
+                            </td>
+                            <td class="actions-cell">
+                                <form id="form-update-{{ task['id'] }}" method="POST" action="/admin/update_task/{{ task['id'] }}" style="margin:0; display:inline-flex; gap:0.5rem; align-items:center;">
+                                    <button type="submit" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin:0;">Gem</button>
+                                </form>
+                                <form method="POST" action="/admin/delete_task/{{ task['id'] }}" style="margin:0; display:inline-block;">
+                                    <button type="submit" class="btn btn-danger" style="margin:0;" onclick="return confirm('Er du helt sikker på du vil slette denne opgave permanent?')">Slet</button>
+                                </form>
+                            </td>
                         </tr>
                     {% endfor %}
                 {% else %}

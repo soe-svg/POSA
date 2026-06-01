@@ -132,7 +132,7 @@
     <div class="header-container">
         <div>
             <h1>Aktuelle opgaver</h1>
-            <p class="subtitle">Pedel Opgave Styrings Applikation</p>
+            <p class="subtitle">Pedel-Opgave-Styrings-Applikation</p>
         </div>
         <div>
             <a href="/create" class="btn btn-primary">+ Opret ny opgave</a>
@@ -168,7 +168,8 @@
                      data-reporter="{{ task['reporter_name'] or '' }}"
                      data-status="{{ task['status'] or '' }}"
                      data-janitor="{{ task['assigned_janitor'] or '' }}"
-                     data-time="Oprettet: {{ task['created_at'] or '' }}">
+                     data-time="Oprettet: {{ task['created_at'] or '' }}"
+                     data-notes="{{ task['internal_notes'] or '' }}">
                     
                     <h3 class="task-title">{{ task['title'] }}</h3>
                     
@@ -240,7 +241,11 @@
             
             <div class="modal-meta">
                 <div id="modal_tags" class="meta-row"></div>
-                <span id="modal_time" style="font-size: 0.8rem; color: #95a5a6; text-align: right; margin-top: 0.5rem;">Tidspunkt</span>
+                <div id="modal_note_container" style="display:none; margin-top:1rem; padding:0.9rem 1rem; background:#f4f6f8; border-radius:8px; border:1px solid #dde3ea;">
+                <strong style="display:block; margin-bottom:0.5rem; color:#2c3e50;">Intern pedel-note:</strong>
+                <div id="modal_note" style="color:#2c3e50; white-space:pre-wrap; font-size:0.95rem;"></div>
+            </div>
+            <span id="modal_time" style="font-size: 0.8rem; color: #95a5a6; text-align: right; margin-top: 0.5rem;">Tidspunkt</span>
             </div>
         </div>
     </div>
@@ -250,7 +255,9 @@
             const modal = document.getElementById('task_modal');
             const closeBtn = document.getElementById('close_modal_btn');
 
-            document.querySelectorAll('.task-card').forEach(function(card) {
+            const refreshInterval = setInterval(function() { window.location.reload(); }, 30000);
+
+        document.querySelectorAll('.task-card').forEach(function(card) {
                 card.addEventListener('click', function() {
                     const title = card.getAttribute('data-title');
                     const description = card.getAttribute('data-description');
@@ -259,6 +266,7 @@
                     const status = card.getAttribute('data-status');
                     const janitor = card.getAttribute('data-janitor');
                     const timeStr = card.getAttribute('data-time');
+                    const notes = card.getAttribute('data-notes');
 
                     document.getElementById('modal_title').innerText = title || "Uden titel";
                     
@@ -278,6 +286,14 @@
                     if (janitor && janitor !== "None" && janitor.trim() !== "") tagsHtml += `<span class="tag tag-janitor">🛠️ ${janitor}</span>`;
                     
                     document.getElementById('modal_tags').innerHTML = tagsHtml;
+
+                    if (notes && notes.trim() !== "") {
+                        document.getElementById('modal_note').innerText = notes;
+                        document.getElementById('modal_note_container').style.display = 'block';
+                    } else {
+                        document.getElementById('modal_note').innerText = '';
+                        document.getElementById('modal_note_container').style.display = 'none';
+                    }
 
                     modal.classList.add('active');
                 });
