@@ -16,8 +16,8 @@
         .btn-danger { background-color: #e74c3c; color: white; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
         .btn-danger:hover { background-color: #c0392b; }
         
-        /* Ny styling til QR-knappen i toppen */
-        .btn-qr { background-color: #2980b9; color: white; margin-left: 0.5rem; }
+        .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+        .btn-qr { background-color: #2980b9; color: white; }
         .btn-qr:hover { background-color: #2471a3; }
 
         .flash { padding: 0.85rem 1.2rem; border-radius: 8px; margin-bottom: 1.25rem; font-weight: bold; }
@@ -47,9 +47,9 @@
             <h1>Serviceleder panel</h1>
             <p style="color: #7f8c8d; margin: 0.25rem 0 0 0;">Styr opgaver og administrer pedelmedhjælpere</p>
         </div>
-        <div>
+        <div class="header-actions">
             <a href="/generate_qr" class="btn btn-qr">📱 QR Værktøj & Lokationer</a>
-            <a href="/admin/print_daily_tasks" target="_blank" class="btn" style="background-color: #27ae60; color: white; margin-left: 0.5rem;">🖨️ Print Dagens Opgaver</a>
+            <a href="/admin/print_daily_tasks" target="_blank" class="btn" style="background-color: #27ae60; color: white;">🖨️ Print Dagens Opgaver</a>
             <a href="/" class="btn btn-secondary">← Tilbage til oversigten</a>
         </div>
     </div>
