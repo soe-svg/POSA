@@ -3,7 +3,9 @@ import qrcode
 import io
 import base64
 import urllib.parse
-from flask import Flask, render_template, request, redirect, flash
+import json
+from datetime import datetime, timedelta
+from flask import Flask, render_template, request, redirect, flash, jsonify
 
 app = Flask(__name__)
 APP_VERSION = "1.2.0"
@@ -42,6 +44,23 @@ def init_db():
             CREATE TABLE IF NOT EXISTS locations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS recurring_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                location TEXT,
+                assigned_janitor TEXT,
+                frequency TEXT,
+                period_start TEXT,
+                period_end TEXT,
+                weekdays TEXT,
+                weeks TEXT,
+                months TEXT,
+                last_generated TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         
@@ -232,8 +251,50 @@ def delete_task(task_id):
     with get_db() as conn:
         conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
         conn.commit()
+    
+    # Return JSON if called via fetch (no redirect)
+    if request.is_json or request.headers.get('Content-Type') == 'application/json':
+        return jsonify({"success": True, "message": "Opgave slettet"})
+    
+    # Original form submission - redirect
     flash("Opgaven blev slettet succesfuldt.")
     return redirect("/admin")
+
+@app.route("/admin/update_status/<int:task_id>", methods=["POST"])
+def update_status(task_id):
+    """Update task status (used by bulk actions)"""
+    data = request.get_json()
+    status = data.get("status")
+    
+    with get_db() as conn:
+        if status == "Færdig":
+            conn.execute(
+                "UPDATE tasks SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (status, task_id)
+            )
+        else:
+            conn.execute(
+                "UPDATE tasks SET status = ?, completed_at = NULL WHERE id = ?",
+                (status, task_id)
+            )
+        conn.commit()
+    
+    return jsonify({"success": True, "message": "Opgave opdateret"})
+
+@app.route("/admin/update_assigned_janitor/<int:task_id>", methods=["POST"])
+def update_assigned_janitor(task_id):
+    """Update assigned janitor for a task (auto-save on dropdown change)"""
+    data = request.get_json()
+    assigned_janitor = data.get("assigned_janitor", "")
+    
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE tasks SET assigned_janitor = ? WHERE id = ?",
+            (assigned_janitor, task_id)
+        )
+        conn.commit()
+    
+    return jsonify({"success": True, "message": "Medarbejer opdateret"})
 
 @app.route("/admin/add_janitor", methods=["POST"])
 def add_janitor():
@@ -289,6 +350,104 @@ def print_all_qr():
             continue
 
     return render_template("print_all_qr.html", qr_list=qr_list)
+
+@app.route("/annual_wheel")
+def annual_wheel():
+    with get_db() as conn:
+        recurring_tasks = [dict(row) for row in conn.execute("SELECT * FROM recurring_tasks ORDER BY created_at DESC").fetchall()]
+        janitors = [dict(row) for row in conn.execute("SELECT DISTINCT name FROM janitors ORDER BY name ASC").fetchall()]
+    
+    return render_template("annual_wheel.html", recurring_tasks=recurring_tasks, janitors=janitors)
+
+@app.route("/annual_wheel/add", methods=["POST"])
+def add_recurring_task():
+    title = request.form.get("title", "").strip()
+    description = request.form.get("description", "").strip()
+    location = request.form.get("location", "").strip()
+    assigned_janitor = request.form.get("assigned_janitor", "").strip()
+    frequency = request.form.get("frequency", "weekly")
+    period_start = request.form.get("period_start", "")
+    period_end = request.form.get("period_end", "")
+    
+    # Hent checkboxes baseret på frekvens
+    weekdays = json.dumps(request.form.getlist("weekdays")) if request.form.getlist("weekdays") else None
+    weeks = json.dumps(request.form.getlist("weeks")) if request.form.getlist("weeks") else None
+    months = json.dumps(request.form.getlist("months")) if request.form.getlist("months") else None
+    
+    if not title:
+        flash("Opgavens navn er påkrævet!", "error")
+        return redirect("/annual_wheel")
+    
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO recurring_tasks (title, description, location, assigned_janitor, frequency, period_start, period_end, weekdays, weeks, months, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (title, description, location, assigned_janitor, frequency, period_start, period_end, weekdays, weeks, months))
+        conn.commit()
+    
+    flash(f"'{title}' er tilføjet til Årshjulet!")
+    return redirect("/annual_wheel")
+
+@app.route("/annual_wheel/edit/<int:task_id>", methods=["POST"])
+def edit_recurring_task(task_id):
+    title = request.form.get("title", "").strip()
+    description = request.form.get("description", "").strip()
+    location = request.form.get("location", "").strip()
+    assigned_janitor = request.form.get("assigned_janitor", "").strip()
+    frequency = request.form.get("frequency", "weekly")
+    period_start = request.form.get("period_start", "")
+    period_end = request.form.get("period_end", "")
+    
+    # Hent checkboxes baseret på frekvens
+    weekdays = json.dumps(request.form.getlist("weekdays")) if request.form.getlist("weekdays") else None
+    weeks = json.dumps(request.form.getlist("weeks")) if request.form.getlist("weeks") else None
+    months = json.dumps(request.form.getlist("months")) if request.form.getlist("months") else None
+    
+    if not title:
+        flash("Opgavens navn er påkrævet!", "error")
+        return redirect("/annual_wheel")
+    
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE recurring_tasks 
+            SET title = ?, description = ?, location = ?, assigned_janitor = ?, frequency = ?, period_start = ?, period_end = ?, weekdays = ?, weeks = ?, months = ?
+            WHERE id = ?
+        """, (title, description, location, assigned_janitor, frequency, period_start, period_end, weekdays, weeks, months, task_id))
+        conn.commit()
+    
+    flash("Opgaven er opdateret!")
+    return redirect("/annual_wheel")
+
+@app.route("/annual_wheel/delete/<int:task_id>", methods=["POST"])
+def delete_recurring_task(task_id):
+    with get_db() as conn:
+        task = conn.execute("SELECT title FROM recurring_tasks WHERE id = ?", (task_id,)).fetchone()
+        if task:
+            title = task["title"]
+            conn.execute("DELETE FROM recurring_tasks WHERE id = ?", (task_id,))
+            conn.commit()
+            flash(f"'{title}' er slettet fra Årshjulet.")
+    
+    return redirect("/annual_wheel")
+
+@app.route("/annual_wheel/generate_now/<int:task_id>", methods=["POST"])
+def generate_task_now(task_id):
+    """Manuelt generere en opgave fra en gentaget opgave"""
+    with get_db() as conn:
+        recurring = conn.execute("SELECT * FROM recurring_tasks WHERE id = ?", (task_id,)).fetchone()
+        if recurring:
+            # Opret ny opgave baseret på den gentagne opgave
+            conn.execute("""
+                INSERT INTO tasks (title, description, location, reporter_name, status, assigned_janitor, created_at)
+                VALUES (?, ?, ?, ?, 'Ny', ?, CURRENT_TIMESTAMP)
+            """, (recurring["title"], recurring["description"], recurring["location"], "Årshjulet", recurring["assigned_janitor"]))
+            
+            # Opdater last_generated
+            conn.execute("UPDATE recurring_tasks SET last_generated = CURRENT_TIMESTAMP WHERE id = ?", (task_id,))
+            conn.commit()
+            flash(f"'{recurring['title']}' er oprettet som ny opgave!")
+    
+    return redirect("/annual_wheel")
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

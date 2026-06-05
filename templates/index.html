@@ -48,11 +48,11 @@
         
         .meta-row { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.8rem; align-items: center; }
         .tag { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; background-color: #eef2f7; color: #555; }
-        .tag-loc { background-color: #e8f4fd; color: #2980b9; }
+        .tag-loc { background-color: #ecf0f1; color: #7f8c8d; }
         .tag-reporter { background-color: #fef9e7; color: #f39c12; }
-        .tag-janitor { background-color: #f4ecf7; color: #8e44ad; }
+        .tag-janitor { background-color: #cfe2ff; color: #084298; }
         .tag-status { font-weight: bold; text-transform: uppercase; }
-        .status-ny { background-color: #d6eaf8; color: #2980b9; }
+        .status-ny { background-color: #fadbd8; color: #c0392b; }
         .status-igang { background-color: #fef9e7; color: #d4ac0d; }
         .status-faerdig { background-color: #d4edda; color: #155724; }
 
@@ -162,12 +162,12 @@
     <div class="grid">
         {% if active_tasks %}
             {% for task in active_tasks %}
-                <div class="card task-card {% if task['status'] == 'I gang' %}card-status-igang{% endif %}"
+                <div class="card task-card {% if task['assigned_janitor'] and task['assigned_janitor'] != '' %}card-status-igang{% endif %}"
                      data-title="{{ task['title'] or '' }}"
                      data-description="{{ task['description'] or '' }}"
                      data-location="{{ task['location'] or '' }}"
                      data-reporter="{{ task['reporter_name'] or '' }}"
-                     data-status="{{ task['status'] or '' }}"
+                     data-status="{% if task['status'] == 'Færdig' %}✓ Færdig{% elif task['assigned_janitor'] and task['assigned_janitor'] != '' %}▶ I gang{% else %}⭘ Ny{% endif %}"
                      data-janitor="{{ task['assigned_janitor'] or '' }}"
                      data-time="Oprettet: {{ task['created_at'] or '' }}"
                      data-notes="{{ task['internal_notes'] or '' }}">
@@ -175,8 +175,14 @@
                     <h3 class="task-title">{{ task['title'] }}</h3>
                     
                     <div class="meta-row">
-                        <span class="tag tag-status {% if task['status'] == 'Ny' %}status-ny{% endif %}{% if task['status'] == 'I gang' %}status-igang{% endif %}">
-                            {{ task['status'] }}
+                        <span class="tag tag-status {% if task['status'] == 'Færdig' %}status-faerdig{% elif task['assigned_janitor'] and task['assigned_janitor'] != '' %}status-igang{% else %}status-ny{% endif %}">
+                            {%- if task['status'] == 'Færdig' -%}
+                            ✓ Færdig
+                            {%- elif task['assigned_janitor'] and task['assigned_janitor'] != '' -%}
+                            ▶ I gang
+                            {%- else -%}
+                            ⭘ Ny
+                            {%- endif -%}
                         </span>
                         {% if task['location'] %}
                             <span class="tag tag-loc">📍 {{ task['location'] }}</span>
@@ -205,14 +211,14 @@
                      data-description="{{ task['description'] or '' }}"
                      data-location="{{ task['location'] or '' }}"
                      data-reporter="{{ task['reporter_name'] or '' }}"
-                     data-status="{{ task['status'] or '' }}"
+                     data-status="✓ Færdig"
                      data-janitor="{{ task['assigned_janitor'] or '' }}"
                      data-time="Udført: {{ task['completed_at'] or '' }}">
                     
                     <h3 class="task-title" style="text-decoration: line-through; color: #7f8c8d;">{{ task['title'] }}</h3>
                     
                     <div class="meta-row">
-                        <span class="tag tag-status status-faerdig">{{ task['status'] }}</span>
+                        <span class="tag tag-status status-faerdig">✓ Færdig</span>
                         {% if task['location'] %}
                             <span class="tag tag-loc" style="opacity:0.6;">📍 {{ task['location'] }}</span>
                         {% endif %}
@@ -281,7 +287,15 @@
                     
                     document.getElementById('modal_time').innerText = timeStr || "";
 
-                    let tagsHtml = `<span class="tag tag-status">${status}</span>`;
+                    let tagsHtml = '';
+                    // Determine status styling
+                    let statusClass = 'status-ny';
+                    if (status && status.includes('Færdig')) {
+                        statusClass = 'status-faerdig';
+                    } else if (status && status.includes('I gang')) {
+                        statusClass = 'status-igang';
+                    }
+                    tagsHtml += `<span class="tag tag-status ${statusClass}">${status}</span>`;
                     if (location && location !== "None" && location.trim() !== "") tagsHtml += `<span class="tag tag-loc">📍 ${location}</span>`;
                     if (reporter && reporter !== "None" && reporter.trim() !== "") tagsHtml += `<span class="tag tag-reporter">👤 ${reporter}</span>`;
                     if (janitor && janitor !== "None" && janitor.trim() !== "") tagsHtml += `<span class="tag tag-janitor">🛠️ ${janitor}</span>`;

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POSA – Årshjul</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f4f8; margin: 0; padding: 2rem; color: #2c3e50; }
+        .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        h1 { margin: 0; }
+        .btn { display: inline-block; padding: 0.6rem 1.4rem; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.95rem; cursor: pointer; border: none; }
+        .btn-primary { background-color: #2c3e50; color: white; }
+        .btn-primary:hover { background-color: #3d5166; }
+        .btn-secondary { background-color: #7f8c8d; color: white; }
+        .btn-secondary:hover { background-color: #6c7a89; }
+        .btn-success { background-color: #27ae60; color: white; }
+        .btn-success:hover { background-color: #229954; }
+        .btn-danger { background-color: #e74c3c; color: white; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .btn-danger:hover { background-color: #c0392b; }
+        
+        .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+        
+        .flash { padding: 0.85rem 1.2rem; border-radius: 8px; margin-bottom: 1.25rem; font-weight: bold; }
+        .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        
+        .card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+        h2 { margin-top: 0; border-bottom: 2px solid #f0f4f8; padding-bottom: 0.5rem; font-size: 1.4rem; }
+        
+        .grid { display: flex; flex-direction: column; gap: 0.75rem; }
+        .task-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f9fbfd; border: 1px solid #dfe7ee; border-radius: 8px; }
+        .task-info { flex: 1; }
+        .task-title { font-weight: bold; font-size: 1rem; margin-bottom: 0.25rem; }
+        .task-meta { font-size: 0.85rem; color: #7f8c8d; }
+        .meta-tag { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; margin-right: 0.5rem; background-color: #eef2f7; }
+        
+        .task-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .task-actions form { margin: 0; }
+        
+        .form-inline { display: flex; flex-direction: column; gap: 1rem; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-row.full { grid-template-columns: 1fr; }
+        label { display: block; font-weight: bold; margin-bottom: 0.3rem; font-size: 0.9rem; }
+        input, select, textarea { padding: 0.5rem; border-radius: 6px; border: 1px solid #ccd1d9; font-size: 0.9rem; width: 100%; box-sizing: border-box; }
+        textarea { resize: vertical; min-height: 80px; }
+        button { align-self: flex-start; }
+        
+        .button-group { display: flex; gap: 0.5rem; }
+        
+        .no-tasks { color: #7f8c8d; font-style: italic; padding: 1rem; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div>
+            <h1>Årshjul – Opgavegenerator</h1>
+            <p style="color: #7f8c8d; margin: 0.25rem 0 0 0;">Opret og administrer gentagne opgaver</p>
+        </div>
+        <div class="header-actions">
+            <a href="/admin" class="btn btn-secondary">← Tilbage til admin-panel</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash flash-success">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <h2>Opret ny gentaget opgave</h2>
+        <form method="POST" action="/annual_wheel/add" class="form-inline">
+            <div class="form-row">
+                <div>
+                    <label for="title">Opgavens navn *</label>
+                    <input type="text" id="title" name="title" placeholder="F.eks. Slå græs" required>
+                </div>
+                <div>
+                    <label for="assigned_janitor">Fast tildelt medarbejer</label>
+                    <select id="assigned_janitor" name="assigned_janitor">
+                        <option value="">-- Ikke tildelt --</option>
+                        {% for janitor in janitors %}
+                            <option value="{{ janitor['name'] }}">{{ janitor['name'] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row full">
+                <div>
+                    <label for="description">Beskrivelse</label>
+                    <textarea id="description" name="description" placeholder="Tilføj evt. detaljer om opgaven..."></textarea>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label for="location">Placering</label>
+                    <input type="text" id="location" name="location" placeholder="F.eks. Gårdsplads">
+                </div>
+            <div class="form-row">
+                <div>
+                    <label for="frequency">Gentagelse *</label>
+                    <select id="frequency" name="frequency" required onchange="updateFrequencyOptions()">
+                        <option value="daily">Dagligt</option>
+                        <option value="weekly">Ugentligt</option>
+                        <option value="monthly">Månedligt</option>
+                        <option value="yearly">Årligt</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Dagligt: Ugedage -->
+            <div id="weekdays-section" class="form-row full" style="display: none;">
+                <div>
+                    <label>Vælg ugedage:</label>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                        <label><input type="checkbox" name="weekdays" value="monday"> Mandag</label>
+                        <label><input type="checkbox" name="weekdays" value="tuesday"> Tirsdag</label>
+                        <label><input type="checkbox" name="weekdays" value="wednesday"> Onsdag</label>
+                        <label><input type="checkbox" name="weekdays" value="thursday"> Torsdag</label>
+                        <label><input type="checkbox" name="weekdays" value="friday"> Fredag</label>
+                        <label><input type="checkbox" name="weekdays" value="saturday"> Lørdag</label>
+                        <label><input type="checkbox" name="weekdays" value="sunday"> Søndag</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ugentligt: Lige/ulige uger -->
+            <div id="weeks-section" class="form-row full" style="display: none;">
+                <div>
+                    <label>Vælg ugetyper:</label>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                        <label><input type="checkbox" name="weeks" value="odd"> Ulige uger</label>
+                        <label><input type="checkbox" name="weeks" value="even"> Lige uger</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Månedligt: Måneder -->
+            <div id="months-section" class="form-row full" style="display: none;">
+                <div>
+                    <label>Vælg måneder:</label>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                        <label><input type="checkbox" name="months" value="january"> Januar</label>
+                        <label><input type="checkbox" name="months" value="february"> Februar</label>
+                        <label><input type="checkbox" name="months" value="march"> Marts</label>
+                        <label><input type="checkbox" name="months" value="april"> April</label>
+                        <label><input type="checkbox" name="months" value="may"> Maj</label>
+                        <label><input type="checkbox" name="months" value="june"> Juni</label>
+                        <label><input type="checkbox" name="months" value="july"> Juli</label>
+                        <label><input type="checkbox" name="months" value="august"> August</label>
+                        <label><input type="checkbox" name="months" value="september"> September</label>
+                        <label><input type="checkbox" name="months" value="october"> Oktober</label>
+                        <label><input type="checkbox" name="months" value="november"> November</label>
+                        <label><input type="checkbox" name="months" value="december"> December</label>
+                    </div>
+                </div>
+            </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label for="period_start">Startdato</label>
+                    <input type="date" id="period_start" name="period_start">
+                </div>
+                <div>
+                    <label for="period_end">Slutdato</label>
+                    <input type="date" id="period_end" name="period_end">
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">+ Opret gentaget opgave</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Aktivt i Årshjulet</h2>
+        {% if recurring_tasks %}
+            <div class="grid">
+                {% for task in recurring_tasks %}
+                    <div class="task-item">
+                        <div class="task-info">
+                            <div class="task-title">{{ task['title'] }}</div>
+                            <div class="task-meta">
+                                {% if task['assigned_janitor'] %}
+                                    <span class="meta-tag">🛠️ {{ task['assigned_janitor'] }}</span>
+                                {% endif %}
+                                {% if task['location'] %}
+                                    <span class="meta-tag">📍 {{ task['location'] }}</span>
+                                {% endif %}
+                                {% if task['frequency'] %}
+                                    <span class="meta-tag">🔄 
+                                        {% if task['frequency'] == 'daily' %}Dagligt
+                                        {% elif task['frequency'] == 'weekly' %}Ugentligt
+                                        {% elif task['frequency'] == 'monthly' %}Månedligt
+                                        {% elif task['frequency'] == 'yearly' %}Årligt
+                                        {% endif %}
+                                    </span>
+                                    {% if task['frequency'] == 'daily' and task['weekdays'] %}
+                                        <span class="meta-tag">📆 {{ task['weekdays'] }}</span>
+                                    {% endif %}
+                                    {% if task['frequency'] == 'weekly' and task['weeks'] %}
+                                        <span class="meta-tag">🔢 {{ task['weeks'] }}</span>
+                                    {% endif %}
+                                    {% if task['frequency'] == 'monthly' and task['months'] %}
+                                        <span class="meta-tag">🗓️ {{ task['months'] }}</span>
+                                    {% endif %}
+                                {% endif %}
+                                {% if task['period_start'] %}
+                                    <span class="meta-tag">📅 {{ task['period_start'] }} - {% if task['period_end'] %}{{ task['period_end'] }}{% else %}løbende{% endif %}</span>
+                                {% endif %}
+                            </div>
+                            {% if task['description'] %}
+                                <div style="font-size: 0.9rem; color: #555; margin-top: 0.5rem;">{{ task['description'] }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="task-actions">
+                            <form method="POST" action="/annual_wheel/generate_now/{{ task['id'] }}" style="margin:0;">
+                                <button type="submit" class="btn btn-success" title="Generer opgave nu">⚡ Opret nu</button>
+                            </form>
+                            
+                            <button class="btn btn-primary" onclick="openEditModal({{ task['id'] }}, {{ task['title']|tojson }}, {{ task['description']|tojson }}, {{ task['location']|tojson }}, {{ task['assigned_janitor']|tojson }}, {{ task['frequency']|tojson }}, {{ task['period_start']|tojson }}, {{ task['period_end']|tojson }}, {{ task['weekdays']|tojson }}, {{ task['weeks']|tojson }}, {{ task['months']|tojson }})">✏️ Rediger</button>
+                            
+                            <form method="POST" action="/annual_wheel/delete/{{ task['id'] }}" style="margin:0;" onsubmit="return confirm('Er du sikker på du vil slette denne?');">
+                                <button type="submit" class="btn btn-danger">🗑️ Slet</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-tasks">Ingen gentagne opgaver oprettet endnu.</div>
+        {% endif %}
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit_modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%;">
+            <h3 style="margin-top: 0;">Rediger gentaget opgave</h3>
+            <form id="edit_form" method="POST" class="form-inline">
+                <div class="form-row full">
+                    <div>
+                        <label for="edit_title">Opgavens navn *</label>
+                        <input type="text" id="edit_title" name="title" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div>
+                        <label for="edit_assigned_janitor">Fast tildelt medarbejer</label>
+                        <select id="edit_assigned_janitor" name="assigned_janitor">
+                            <option value="">-- Ikke tildelt --</option>
+                            {% for janitor in janitors %}
+                                <option value="{{ janitor['name'] }}">{{ janitor['name'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit_frequency">Gentagelse</label>
+                        <select id="edit_frequency" name="frequency" onchange="updateEditFrequencyOptions()">
+                            <option value="daily">Dagligt</option>
+                            <option value="weekly">Ugentligt</option>
+                            <option value="monthly">Månedligt</option>
+                            <option value="yearly">Årligt</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row full">
+                    <div>
+                        <label for="edit_description">Beskrivelse</label>
+                        <textarea id="edit_description" name="description"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div>
+                        <label for="edit_location">Placering</label>
+                        <input type="text" id="edit_location" name="location">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div>
+                        <label for="edit_period_start">Startdato</label>
+                        <input type="date" id="edit_period_start" name="period_start">
+                    </div>
+                    <div>
+                        <label for="edit_period_end">Slutdato</label>
+                        <input type="date" id="edit_period_end" name="period_end">
+                    </div>
+                </div>
+                
+                <!-- Dagligt: Ugedage -->
+                <div id="edit_weekdays-section" class="form-row full" style="display: none;">
+                    <div>
+                        <label>Vælg ugedage:</label>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                            <label><input type="checkbox" name="weekdays" value="monday"> Mandag</label>
+                            <label><input type="checkbox" name="weekdays" value="tuesday"> Tirsdag</label>
+                            <label><input type="checkbox" name="weekdays" value="wednesday"> Onsdag</label>
+                            <label><input type="checkbox" name="weekdays" value="thursday"> Torsdag</label>
+                            <label><input type="checkbox" name="weekdays" value="friday"> Fredag</label>
+                            <label><input type="checkbox" name="weekdays" value="saturday"> Lørdag</label>
+                            <label><input type="checkbox" name="weekdays" value="sunday"> Søndag</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Ugentligt: Lige/ulige uger -->
+                <div id="edit_weeks-section" class="form-row full" style="display: none;">
+                    <div>
+                        <label>Vælg ugetyper:</label>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                            <label><input type="checkbox" name="weeks" value="odd"> Ulige uger</label>
+                            <label><input type="checkbox" name="weeks" value="even"> Lige uger</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Månedligt: Måneder -->
+                <div id="edit_months-section" class="form-row full" style="display: none;">
+                    <div>
+                        <label>Vælg måneder:</label>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                            <label><input type="checkbox" name="months" value="january"> Januar</label>
+                            <label><input type="checkbox" name="months" value="february"> Februar</label>
+                            <label><input type="checkbox" name="months" value="march"> Marts</label>
+                            <label><input type="checkbox" name="months" value="april"> April</label>
+                            <label><input type="checkbox" name="months" value="may"> Maj</label>
+                            <label><input type="checkbox" name="months" value="june"> Juni</label>
+                            <label><input type="checkbox" name="months" value="july"> Juli</label>
+                            <label><input type="checkbox" name="months" value="august"> August</label>
+                            <label><input type="checkbox" name="months" value="september"> September</label>
+                            <label><input type="checkbox" name="months" value="october"> Oktober</label>
+                            <label><input type="checkbox" name="months" value="november"> November</label>
+                            <label><input type="checkbox" name="months" value="december"> December</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">Gem ændringer</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Annuller</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentEditId = null;
+
+        function updateFrequencyOptions() {
+            const frequency = document.getElementById('frequency').value;
+            document.getElementById('weekdays-section').style.display = frequency === 'daily' ? 'block' : 'none';
+            document.getElementById('weeks-section').style.display = frequency === 'weekly' ? 'block' : 'none';
+            document.getElementById('months-section').style.display = frequency === 'monthly' ? 'block' : 'none';
+        }
+
+        function updateEditFrequencyOptions() {
+            const frequency = document.getElementById('edit_frequency').value;
+            document.getElementById('edit_weekdays-section').style.display = frequency === 'daily' ? 'block' : 'none';
+            document.getElementById('edit_weeks-section').style.display = frequency === 'weekly' ? 'block' : 'none';
+            document.getElementById('edit_months-section').style.display = frequency === 'monthly' ? 'block' : 'none';
+        }
+
+        function openEditModal(id, title, description, location, assigned_janitor, frequency, period_start, period_end, weekdays, weeks, months) {
+            currentEditId = id;
+            document.getElementById('edit_title').value = title || '';
+            document.getElementById('edit_description').value = description || '';
+            document.getElementById('edit_location').value = location || '';
+            document.getElementById('edit_assigned_janitor').value = assigned_janitor || '';
+            document.getElementById('edit_frequency').value = frequency || 'weekly';
+            document.getElementById('edit_period_start').value = period_start || '';
+            document.getElementById('edit_period_end').value = period_end || '';
+            
+            // Parse og check checkboxes
+            if (weekdays && Array.isArray(weekdays) && weekdays.length > 0) {
+                document.querySelectorAll('#edit_weekdays-section input[name="weekdays"]').forEach(cb => {
+                    cb.checked = weekdays.includes(cb.value);
+                });
+            }
+            if (weeks && Array.isArray(weeks) && weeks.length > 0) {
+                document.querySelectorAll('#edit_weeks-section input[name="weeks"]').forEach(cb => {
+                    cb.checked = weeks.includes(cb.value);
+                });
+            }
+            if (months && Array.isArray(months) && months.length > 0) {
+                document.querySelectorAll('#edit_months-section input[name="months"]').forEach(cb => {
+                    cb.checked = months.includes(cb.value);
+                });
+            }
+            
+            // Vis/skjul relevante sektioner
+            updateEditFrequencyOptions();
+            
+            document.getElementById('edit_form').action = `/annual_wheel/edit/${id}`;
+            document.getElementById('edit_modal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit_modal').style.display = 'none';
+        }
+
+        document.getElementById('edit_modal').addEventListener('click', function(e) {
+            if (e.target === this) closeEditModal();
+        });
+    </script>
+
+</body>
+</html>

@@ -38,6 +38,14 @@
         .actions-cell { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-start; }
         .actions-cell form { margin: 0; }
         .actions-cell button { margin: 0; }
+        
+        .checkbox-cell { text-align: center; }
+        .checkbox-cell input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        
+        .bulk-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; }
+        .bulk-actions .btn { padding: 0.6rem 1.4rem; }
+        .btn-success { background-color: #27ae60; color: white; }
+        .btn-success:hover { background-color: #229954; }
     </style>
 </head>
 <body>
@@ -48,6 +56,7 @@
             <p style="color: #7f8c8d; margin: 0.25rem 0 0 0;">Styr opgaver og administrer pedelmedhjælpere</p>
         </div>
         <div class="header-actions">
+            <a href="/annual_wheel" class="btn" style="background-color: #9b59b6; color: white;">🔄 Årshjul</a>
             <a href="/generate_qr" class="btn btn-qr">📱 QR Værktøj & Lokationer</a>
             <a href="/admin/print_daily_tasks" target="_blank" class="btn" style="background-color: #27ae60; color: white;">🖨️ Print Dagens Opgaver</a>
             <a href="/" class="btn btn-secondary">← Tilbage til oversigten</a>
@@ -73,7 +82,7 @@
                     <th>Status</th>
                     <th>Tildelt til</th>
                     <th>Interne Noter / Kommentarer</th>
-                    <th>Handling</th>
+                    <th style="text-align: center; width: 50px;">Vælg</th>
                 </tr>
             </thead>
             <tbody>
@@ -84,14 +93,25 @@
                             <td>{{ task['location'] or '—' }}</td>
                             <td>{{ task['reporter_name'] or 'Anonym' }}</td>
                             <td>
-                                <select name="status" form="form-update-{{ task['id'] }}">
-                                    <option value="Ny" {% if task['status'] == 'Ny' %}selected{% endif %}>Ny</option>
-                                    <option value="I gang" {% if task['status'] == 'I gang' %}selected{% endif %}>I gang</option>
-                                    <option value="Færdig" {% if task['status'] == 'Færdig' %}selected{% endif %}>Færdig</option>
-                                </select>
+                                <span class="status-badge" style="padding: 0.35rem 0.7rem; border-radius: 6px; font-weight: bold; font-size: 0.85rem; white-space: nowrap; display: inline-block;"
+                                    {%- if task['status'] == 'Færdig' %}
+                                    style="background-color: #d4edda; color: #155724; padding: 0.35rem 0.7rem; border-radius: 6px; font-weight: bold; font-size: 0.85rem; white-space: nowrap; display: inline-block;"
+                                    {%- elif task['assigned_janitor'] and task['assigned_janitor'] != '' %}
+                                    style="background-color: #cfe2ff; color: #084298; padding: 0.35rem 0.7rem; border-radius: 6px; font-weight: bold; font-size: 0.85rem; white-space: nowrap; display: inline-block;"
+                                    {%- else %}
+                                    style="background-color: #fadbd8; color: #c0392b; padding: 0.35rem 0.7rem; border-radius: 6px; font-weight: bold; font-size: 0.85rem; white-space: nowrap; display: inline-block;"
+                                    {%- endif %}>
+                                    {%- if task['status'] == 'Færdig' %}
+                                    ✓ Færdig
+                                    {%- elif task['assigned_janitor'] and task['assigned_janitor'] != '' %}
+                                    ▶ I gang
+                                    {%- else %}
+                                    ⭘ Ny
+                                    {%- endif %}
+                                </span>
                             </td>
                             <td>
-                                <select name="assigned_janitor" form="form-update-{{ task['id'] }}">
+                                <select name="assigned_janitor" class="auto-save-janitor" data-task-id="{{ task['id'] }}">
                                     <option value="">-- Ikke tildelt --</option>
                                     {% for janitor in janitors %}
                                         <option value="{{ janitor['name'] }}" {% if task['assigned_janitor'] == janitor['name'] %}selected{% endif %}>
@@ -106,13 +126,8 @@
                                     <button type="submit" class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; margin:0;">Gem note</button>
                                 </form>
                             </td>
-                            <td class="actions-cell">
-                                <form id="form-update-{{ task['id'] }}" method="POST" action="/admin/update_task/{{ task['id'] }}" style="margin:0; display:inline-flex; gap:0.5rem; align-items:center;">
-                                    <button type="submit" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin:0;">Gem</button>
-                                </form>
-                                <form method="POST" action="/admin/delete_task/{{ task['id'] }}" style="margin:0; display:inline-block;">
-                                    <button type="submit" class="btn btn-danger" style="margin:0;" onclick="return confirm('Er du helt sikker på du vil slette denne opgave permanent?')">Slet</button>
-                                </form>
+                            <td class="checkbox-cell">
+                                <input type="checkbox" class="task-checkbox" value="{{ task['id'] }}">
                             </td>
                         </tr>
                     {% endfor %}
@@ -123,6 +138,11 @@
                 {% endif %}
             </tbody>
         </table>
+
+        <div class="bulk-actions">
+            <button id="btn-mark-done" class="btn btn-success">✓ Færdig</button>
+            <button id="btn-delete-selected" class="btn btn-danger">🗑️ Slet</button>
+        </div>
 
         <hr style="margin: 2rem 0; border-color: #e1e8ee;">
 
@@ -137,7 +157,7 @@
                         <th>Status</th>
                         <th>Tildelt til</th>
                         <th>Interne Noter / Kommentarer</th>
-                        <th>Handling</th>
+                        <th style="text-align: center; width: 50px;">Vælg</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -148,14 +168,25 @@
                                 <td>{{ task['location'] or '—' }}</td>
                                 <td>{{ task['reporter_name'] or 'Anonym' }}</td>
                                 <td>
-                                    <select name="status" form="form-update-{{ task['id'] }}">
-                                        <option value="Ny" {% if task['status'] == 'Ny' %}selected{% endif %}>Ny</option>
-                                        <option value="I gang" {% if task['status'] == 'I gang' %}selected{% endif %}>I gang</option>
-                                        <option value="Færdig" {% if task['status'] == 'Færdig' %}selected{% endif %}>Færdig</option>
-                                    </select>
+                                    <span class="status-badge" style="padding: 0.35rem 0.7rem; border-radius: 6px; font-weight: bold; font-size: 0.85rem; white-space: nowrap; display: inline-block;"
+                                        {%- if task['status'] == 'Færdig' %}
+                                        style="background-color: #d4edda; color: #155724; padding: 0.35rem 0.7rem; border-radius: 6px; font-weight: bold; font-size: 0.85rem; white-space: nowrap; display: inline-block;"
+                                        {%- elif task['assigned_janitor'] and task['assigned_janitor'] != '' %}
+                                        style="background-color: #cfe2ff; color: #084298; padding: 0.35rem 0.7rem; border-radius: 6px; font-weight: bold; font-size: 0.85rem; white-space: nowrap; display: inline-block;"
+                                        {%- else %}
+                                        style="background-color: #fadbd8; color: #c0392b; padding: 0.35rem 0.7rem; border-radius: 6px; font-weight: bold; font-size: 0.85rem; white-space: nowrap; display: inline-block;"
+                                        {%- endif %}>
+                                        {%- if task['status'] == 'Færdig' %}
+                                        ✓ Færdig
+                                        {%- elif task['assigned_janitor'] and task['assigned_janitor'] != '' %}
+                                        ▶ I gang
+                                        {%- else %}
+                                        ⭘ Ny
+                                        {%- endif %}
+                                    </span>
                                 </td>
                                 <td>
-                                    <select name="assigned_janitor" form="form-update-{{ task['id'] }}">
+                                    <select name="assigned_janitor" class="auto-save-janitor" data-task-id="{{ task['id'] }}">
                                         <option value="">-- Ikke tildelt --</option>
                                         {% for janitor in janitors %}
                                             <option value="{{ janitor['name'] }}" {% if task['assigned_janitor'] == janitor['name'] %}selected{% endif %}>
@@ -170,13 +201,8 @@
                                         <button type="submit" class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; margin:0;">Gem note</button>
                                     </form>
                                 </td>
-                                <td class="actions-cell">
-                                    <form id="form-update-{{ task['id'] }}" method="POST" action="/admin/update_task/{{ task['id'] }}" style="margin:0; display:inline-flex; gap:0.5rem; align-items:center;">
-                                        <button type="submit" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin:0;">Gem</button>
-                                    </form>
-                                    <form method="POST" action="/admin/delete_task/{{ task['id'] }}" style="margin:0; display:inline-block;">
-                                        <button type="submit" class="btn btn-danger" style="margin:0;" onclick="return confirm('Er du helt sikker på du vil slette denne opgave permanent?')">Slet</button>
-                                    </form>
+                                <td class="checkbox-cell">
+                                    <input type="checkbox" class="task-checkbox" value="{{ task['id'] }}">
                                 </td>
                             </tr>
                         {% endfor %}
@@ -187,6 +213,11 @@
                     {% endif %}
                 </tbody>
             </table>
+
+            <div class="bulk-actions">
+                <button id="btn-mark-done-completed" class="btn btn-success">✓ Færdig</button>
+                <button id="btn-delete-selected-completed" class="btn btn-danger">🗑️ Slet</button>
+            </div>
         </details>
     </div>
 
@@ -215,6 +246,122 @@
             {% endif %}
         </div>
     </div>
+
+    <script>
+        // Auto-save assigned_janitor when changed
+        document.querySelectorAll('select.auto-save-janitor').forEach(select => {
+            select.addEventListener('change', function() {
+                const taskId = this.getAttribute('data-task-id');
+                const newJanitor = this.value;
+                
+                fetch(`/admin/update_assigned_janitor/${taskId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ assigned_janitor: newJanitor })
+                }).then(response => {
+                    if (!response.ok) throw new Error('Fejl ved gemning');
+                }).catch(err => console.error('Fejl:', err));
+            });
+        });
+
+        // Handle bulk "Færdig" button for active tasks
+        document.getElementById('btn-mark-done').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.task-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedIds.length === 0) {
+                alert('Vælg mindst én opgave for at markere som færdig.');
+                return;
+            }
+            
+            if (confirm(`Er du sikker på du vil markere ${selectedIds.length} opgave(r) som færdig?`)) {
+                selectedIds.forEach(taskId => {
+                    fetch(`/admin/update_status/${taskId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ status: 'Færdig' })
+                    }).then(() => {
+                        // Optional: Reload page or update table
+                    }).catch(err => console.error('Fejl:', err));
+                });
+                setTimeout(() => location.reload(), 300);
+            }
+        });
+
+        // Handle bulk "Slet" button for active tasks
+        document.getElementById('btn-delete-selected').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.task-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedIds.length === 0) {
+                alert('Vælg mindst én opgave for at slette.');
+                return;
+            }
+            
+            if (confirm(`Er du helt sikker på, at du vil slette ${selectedIds.length} opgave(r) permanent?`)) {
+                selectedIds.forEach(taskId => {
+                    fetch(`/admin/delete_task/${taskId}`, {
+                        method: 'POST'
+                    }).then(() => {
+                        // Optional: Reload page or update table
+                    }).catch(err => console.error('Fejl:', err));
+                });
+                setTimeout(() => location.reload(), 300);
+            }
+        });
+
+        // Handle bulk "Færdig" button for completed tasks
+        document.getElementById('btn-mark-done-completed').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.task-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedIds.length === 0) {
+                alert('Vælg mindst én opgave for at markere som færdig.');
+                return;
+            }
+            
+            if (confirm(`Er du sikker på du vil markere ${selectedIds.length} opgave(r) som færdig?`)) {
+                selectedIds.forEach(taskId => {
+                    fetch(`/admin/update_status/${taskId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ status: 'Færdig' })
+                    }).then(() => {
+                        // Optional: Reload page or update table
+                    }).catch(err => console.error('Fejl:', err));
+                });
+                setTimeout(() => location.reload(), 300);
+            }
+        });
+
+        // Handle bulk "Slet" button for completed tasks
+        document.getElementById('btn-delete-selected-completed').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.task-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedIds.length === 0) {
+                alert('Vælg mindst én opgave for at slette.');
+                return;
+            }
+            
+            if (confirm(`Er du helt sikker på, at du vil slette ${selectedIds.length} opgave(r) permanent?`)) {
+                selectedIds.forEach(taskId => {
+                    fetch(`/admin/delete_task/${taskId}`, {
+                        method: 'POST'
+                    }).then(() => {
+                        // Optional: Reload page or update table
+                    }).catch(err => console.error('Fejl:', err));
+                });
+                setTimeout(() => location.reload(), 300);
+            }
+        });
+    </script>
 
 </body>
 </html>

@@ -43,6 +43,22 @@ def init_db():
         # Kolonnen findes allerede i forvejen, alt er godt.
         pass
     
+    # NY TABEL: Gentagne opgaver (Årshjulet)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS recurring_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            location TEXT,
+            assigned_janitor TEXT,
+            frequency TEXT,
+            period_start TEXT,
+            period_end TEXT,
+            last_generated TEXT,
+            created_at TEXT
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
@@ -136,5 +152,51 @@ def delete_location(loc_id):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM locations WHERE id = ?", (loc_id,))
+    conn.commit()
+    conn.close()
+
+
+# --- FUNKTIONER TIL GENTAGNE OPGAVER (ÅRSHJULET) ---
+def get_all_recurring_tasks():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM recurring_tasks ORDER BY created_at DESC")
+    tasks = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return tasks
+
+def insert_recurring_task(title, description, location, assigned_janitor, frequency, period_start, period_end):
+    conn = get_db()
+    cursor = conn.cursor()
+    created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    cursor.execute('''
+        INSERT INTO recurring_tasks (title, description, location, assigned_janitor, frequency, period_start, period_end, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (title, description, location, assigned_janitor, frequency, period_start, period_end, created_at))
+    conn.commit()
+    conn.close()
+
+def update_recurring_task(task_id, title, description, location, assigned_janitor, frequency, period_start, period_end):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE recurring_tasks 
+        SET title = ?, description = ?, location = ?, assigned_janitor = ?, frequency = ?, period_start = ?, period_end = ?
+        WHERE id = ?
+    ''', (title, description, location, assigned_janitor, frequency, period_start, period_end, task_id))
+    conn.commit()
+    conn.close()
+
+def delete_recurring_task(task_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM recurring_tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+
+def update_recurring_task_last_generated(task_id, last_generated):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE recurring_tasks SET last_generated = ? WHERE id = ?", (last_generated, task_id))
     conn.commit()
     conn.close()
