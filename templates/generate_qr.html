@@ -64,18 +64,19 @@
             gap: 0.75rem;
             margin-bottom: 1.5rem;
         }
-        .page-header h1 {
-            margin: 0;
-        }
-        .form-group input[type="text"] {
-            display: block;
+        .page-header h1 { margin: 0; }
+        
+        .form-group { margin-bottom: 1.25rem; }
+        label { display: block; font-weight: bold; margin-bottom: 0.5rem; }
+        input[type="text"] {
             width: 100%;
+            padding: 0.6rem;
+            border-radius: 6px;
+            border: 1px solid #ccd1d9;
+            font-size: 1rem;
+            display: block;
             margin-bottom: 1rem;
         }
-        .form-group .btn-submit {
-            margin-top: 0.5rem;
-        }
-        .btn-mass-print:hover { background-color: #2471a3; }
 
         .flash {
             padding: 0.85rem 1.2rem;
@@ -86,35 +87,8 @@
         }
         .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .flash-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 0.6rem;
-            border-radius: 6px;
-            border: 1px solid #ccd1d9;
-            font-size: 1rem;
-            display: block;
-            margin-bottom: 1rem;
-        }
-        .form-group .btn-submit {
-            margin-top: 0.5rem;
-        }
-        .page-header {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.75rem;
-            margin-bottom: 1.5rem;
-        }
         
+        /* QR container i browser-visning */
         .qr-result-box {
             margin-top: 1.5rem;
             text-align: center;
@@ -123,11 +97,40 @@
             border-radius: 8px;
             background: #f9fbfc;
         }
+
+        /* Skærm-version af det nye kompakte kort */
+        .qr-print-grid {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .qr-card {
+            background: white;
+            border: 2px solid #2c3e50;
+            border-radius: 8px;
+            padding: 1rem;
+            width: 160px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .qr-card h3 {
+            font-size: 0.9rem;
+            margin: 0 0 0.5rem 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #2c3e50;
+        }
+        .qr-card p {
+            font-size: 0.7rem;
+            margin: 0.5rem 0 0 0;
+            color: #7f8c8d;
+            font-weight: bold;
+        }
         .qr-image {
-            max-width: 230px;
-            width: 100%;
-            height: auto;
-            margin: 1rem 0;
+            width: 130px;
+            height: 130px;
+            display: block;
+            margin: 0 auto;
         }
         .info-text {
             font-size: 0.85rem;
@@ -150,19 +153,55 @@
         .location-table tr:hover td { background-color: #fcfdfe; }
         .actions-cell { display: flex; gap: 0.5rem; }
 
-        .print-poster { display: none; }
-
-        /* PRINT STYLING */
+        /* PRINT STYLING - Optimeret til 8 kort pr. A4-side (2x4 grid) */
         @media print {
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
             body { background-color: white; padding: 0; margin: 0; }
             .no-print { display: none !important; }
-            .container { box-shadow: none; padding: 0; max-width: 100%; }
-            .qr-result-box { border: none; background: white; padding: 0; margin-top: 5cm; text-align: center; }
-            .print-poster { display: block !important; font-family: sans-serif; color: black; }
-            .print-poster h2 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-            .print-poster p { font-size: 1.5rem; color: #555; margin-top: 0; }
-            .qr-image { max-width: 350px !important; }
-            .location-tag { font-size: 2rem; font-weight: bold; border: 3px solid black; display: inline-block; padding: 0.5rem 2rem; margin-top: 1.5rem; text-transform: uppercase; }
+            .container { box-shadow: none; padding: 0; max-width: 100%; margin: 0; }
+            .qr-result-box { border: none; background: white; padding: 0; margin: 0; }
+            
+            /* Gitter-styring: 2 kolonner */
+            .qr-print-grid {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15mm 10mm; /* Højde- og bredde-afstand mellem mærkerne */
+                padding: 5mm;
+            }
+            
+            /* Det fysiske print-mærke */
+            .qr-card {
+                width: 85mm;      /* Passer perfekt på halvdelen af bredden */
+                height: 62mm;     /* Giver plads til nøjagtig 4 rækker pr. A4 */
+                border: 1px dashed #666; /* Nemt at klippe efter */
+                border-radius: 4px;
+                padding: 5mm;
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .qr-card h3 {
+                font-size: 1.1rem !important;
+                color: black;
+                margin: 0 0 3mm 0 !important;
+            }
+            .qr-image {
+                width: 38mm !important;
+                height: 38mm !important;
+            }
+            .qr-card p {
+                font-size: 0.8rem !important;
+                color: #333 !important;
+                margin: 2mm 0 0 0 !important;
+            }
         }
     </style>
 </head>
@@ -195,21 +234,19 @@
 
         {% if qr_base64 %}
             <div class="qr-result-box">
-                <div class="print-poster">
-                    <h2>MELD FEJL ELLER MANGLER</h2>
-                    <p>Scan QR-koden med din telefon for at sende en opgave til pedellen</p>
-                </div>
-
-                <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Kode for {{ location }}" class="qr-image">
-
-                <div class="print-poster">
-                    <div class="location-tag">{{ location }}</div>
+                
+                <div class="qr-print-grid">
+                    <div class="qr-card">
+                        <h3>Meld fejl/mangler</h3>
+                        <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Kode for {{ location }}" class="qr-image">
+                        <p>{{ location }}</p>
+                    </div>
                 </div>
 
                 <div class="no-print">
                     <p>Viser kode for: <strong>{{ location }}</strong></p>
                     <p class="info-text">Mål-URL: <code>{{ target_url }}</code></p>
-                    <button onclick="window.print();" class="btn btn-print">🖨️ Print QR Plakat</button>
+                    <button onclick="window.print();" class="btn btn-print">🖨️ Print QR-kode</button>
                 </div>
             </div>
         {% endif %}
@@ -218,7 +255,7 @@
             <h2 class="section-title">Gemte lokationer i databasen</h2>
             
             {% if saved_locations %}
-                <a href="/print_all_qr" class="btn-mass-print">🖨️ Mass-print alle gemte QR-koder (Én per A4-side)</a>
+                <a href="/print_all_qr" class="btn-mass-print">🖨️ Mass-print alle gemte QR-koder (8 pr. A4-side)</a>
 
                 <table class="location-table">
                     <thead>
