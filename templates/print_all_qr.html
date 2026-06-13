@@ -7,10 +7,9 @@
     <style>
         body {
             font-family: sans-serif;
-            background-color: white;
+            background-color: #f0f4f8;
             margin: 0;
             padding: 0;
-            text-align: center;
         }
         
         .no-print-top {
@@ -18,7 +17,7 @@
             color: white;
             padding: 1rem;
             font-weight: bold;
-            margin-bottom: 2cm;
+            text-align: center;
         }
         .btn {
             background-color: #27ae60;
@@ -34,51 +33,100 @@
         }
         .btn-back { background-color: #7f8c8d; }
 
-        /* Selve plakat-beholderen */
-        .qr-poster {
-            /* Tvinger browseren til at lave et nyt stykke papir efter hver lokation ved print */
-            page-break-after: always;
-            box-sizing: border-box;
-            padding-top: 5cm; /* Centrerer koden vertikalt på et A4 */
-        }
-        
-        .qr-poster:last-child {
-            page-break-after: avoid; /* Undgå en tom hvid side til sidst */
+        /* Gitteret til skærmvisning */
+        .qr-print-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
-        h2 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            color: black;
+        /* Det kompakte kort-format */
+        .qr-card {
+            background: white;
+            border: 2px solid #2c3e50;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            box-sizing: border-box;
         }
-        p {
-            font-size: 1.5rem;
-            color: #555;
-            margin-top: 0;
+        .qr-card h3 {
+            font-size: 0.9rem;
+            margin: 0 0 0.5rem 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #2c3e50;
+        }
+        .qr-card p {
+            font-size: 0.7rem;
+            margin: 0.5rem 0 0 0;
+            color: #7f8c8d;
+            font-weight: bold;
         }
         .qr-image {
-            max-width: 350px;
-            width: 100%;
-            height: auto;
-            margin: 1.5rem 0;
-        }
-        .location-tag {
-            font-size: 2rem;
-            font-weight: bold;
-            border: 3px solid black;
-            display: inline-block;
-            padding: 0.5rem 2rem;
-            margin-top: 1.5rem;
-            text-transform: uppercase;
+            width: 130px;
+            height: 130px;
+            display: block;
+            margin: 0 auto;
         }
 
-        /* Skjul topbaren fuldstændigt når der printes */
+        /* STRUKTURERET PRINT-STYLING (8 kort pr. A4-side) */
         @media print {
-            .no-print-top {
-                display: none !important;
+            @page {
+                size: A4;
+                margin: 10mm;
             }
-            .qr-poster {
-                padding-top: 4cm;
+            body { 
+                background-color: white; 
+                padding: 0; 
+                margin: 0; 
+            }
+            .no-print-top { 
+                display: none !important; 
+            }
+            
+            /* Tvinger layoutet i præcis 2 kolonner til print */
+            .qr-print-grid {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 15mm 10mm !important;
+                padding: 5mm !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+            }
+            
+            /* Det fysiske mærke justeret til A4-dimensioner */
+            .qr-card {
+                width: 85mm;
+                height: 62mm;
+                border: 1px dashed #666 !important; /* Klippelinje */
+                border-radius: 4px;
+                padding: 5mm;
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                page-break-inside: avoid;
+                break-inside: avoid;
+                background: transparent;
+            }
+
+            .qr-card h3 {
+                font-size: 1.1rem !important;
+                color: black !important;
+                margin: 0 0 3mm 0 !important;
+            }
+            .qr-image {
+                width: 38mm !important;
+                height: 38mm !important;
+            }
+            .qr-card p {
+                font-size: 0.8rem !important;
+                color: #333 !important;
+                margin: 2mm 0 0 0 !important;
             }
         }
     </style>
@@ -86,27 +134,23 @@
 <body>
 
     <div class="no-print-top">
-        🖨️ Forhåndsvisning: Klar til at printe {{ qr_list|length }} plakater.
+        🖨️ Forhåndsvisning: Klar til at printe {{ qr_list|length }} QR-mærker (8 mærker pr. A4-side).
         <button onclick="window.print();" class="btn">Start Printarbejde</button>
         <a href="/generate_qr" class="btn btn-back">← Gå tilbage</a>
     </div>
 
-    {% for item in qr_list %}
-        <div class="qr-poster">
-            <h2>MELD FEJL ELLER MANGLER</h2>
-            <p>Scan QR-koden med din telefon for at sende en opgave til pedellen</p>
-            
-            <img src="data:image/png;base64,{{ item['qr_base64'] }}" alt="QR Kode for {{ item['name'] }}" class="qr-image">
-            
-            <div>
-                <div class="location-tag">{{ item['name'] }}</div>
+    <div class="qr-print-grid">
+        {% for item in qr_list %}
+            <div class="qr-card">
+                <h3>Meld fejl/mangler</h3>
+                <img src="data:image/png;base64,{{ item['qr_base64'] }}" alt="QR Kode for {{ item['name'] }}" class="qr-image">
+                <p>{{ item['name'] }}</p>
             </div>
-        </div>
-    {% endfor %}
+        {% endfor %}
+    </div>
 
     <script>
         window.onload = function() {
-            // En lille delay sikrer, at billederne er helt klar i browseren inden boksen popper op
             setTimeout(function() {
                 window.print();
             }, 500);
